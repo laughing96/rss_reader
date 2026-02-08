@@ -4,7 +4,7 @@ metadata:
   name: backend-config
   namespace: hackernews
 data:
-  DATABASE_URL: "postgresql://postgres:hackernews123@postgres.hackernews.svc.cluster.local:5432/hackernews"
+  DATABASE_URL: "postgresql://hacker:hacker123@postgres.hackernews.svc.cluster.local:5432/hackernews"
   REDIS_URL: "redis://redis.hackernews.svc.cluster.local:6379/0"
 ---
 apiVersion: apps/v1

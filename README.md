@@ -1,21 +1,30 @@
 # 🚀 Hacker News + RSS Reader
 
-一个本地运行的 Hacker News 和 RSS 阅读器，使用 Vue3 + FastAPI + PostgreSQL + Redis，通过 Kubernetes 在 Orbstack 上部署。
+一个本地运行的 Hacker News 和 RSS 阅读器，使用 Vue3 + Django REST Framework + PostgreSQL + Redis，通过 Kubernetes 在 Orbstack 上部署。
 
 ## 📁 项目结构
 
 ```
 hackernews-reader/
-├── backend/                 # FastAPI 后端
-│   ├── main.py             # API 入口
-│   ├── database.py         # 数据库模型
-│   ├── schemas.py          # Pydantic 模型
-│   ├── services.py         # 业务逻辑
+├── backend/                 # Django REST Framework 后端
+│   ├── api/                # API 应用
+│   │   ├── models.py       # Django 模型
+│   │   ├── views.py        # API 视图
+│   │   ├── serializers.py  # DRF 序列化器
+│   │   ├── services.py     # 业务逻辑
+│   │   └── urls.py         # API 路由
+│   ├── settings.py         # Django 配置
+│   ├── urls.py             # 主路由配置
+│   ├── wsgi.py             # WSGI 入口
+│   ├── manage.py           # Django 管理命令
 │   ├── requirements.txt    # Python 依赖
 │   └── Dockerfile
 ├── frontend/               # Vue3 前端
 │   ├── src/
 │   │   ├── views/          # 页面组件
+│   │   │   ├── HomeView.vue       # 合并新闻页
+│   │   │   ├── HackerNewsView.vue # HN 文章页
+│   │   │   └── RSSView.vue        # RSS 管理页
 │   │   ├── router/         # 路由配置
 │   │   ├── App.vue
 │   │   └── main.js
@@ -37,10 +46,10 @@ hackernews-reader/
 
 ## 🏗️ 技术栈
 
-- **前端**: Vue 3 + Vite + Pinia + Vue Router + Axios
-- **后端**: FastAPI + SQLAlchemy + Pydantic
+- **前端**: Vue 3 + Vite + Vue Router + Axios + date-fns
+- **后端**: Django 5 + Django REST Framework
 - **数据库**: PostgreSQL 15
-- **缓存**: Redis 7
+- **缓存**: Redis 7 (django-redis)
 - **部署**: Kubernetes + Docker
 
 ## ✨ 功能特性
@@ -99,13 +108,13 @@ open http://localhost:8080
 |------|------|
 | `GET /` | API 信息 |
 | `GET /health` | 健康检查 |
-| `GET /api/hn/stories` | Hacker News 热门文章 |
+| `GET /api/hn/stories?limit=30` | Hacker News 热门文章 |
 | `GET /api/rss/feeds` | RSS Feed 列表 |
 | `POST /api/rss/feeds` | 添加 RSS Feed |
 | `DELETE /api/rss/feeds/{id}` | 删除 RSS Feed |
-| `GET /api/rss/items` | RSS 文章列表 |
+| `GET /api/rss/items?feed_id={id}` | RSS 文章列表 |
 | `POST /api/rss/feeds/{id}/refresh` | 刷新 RSS Feed |
-| `GET /api/combined` | 合并的 HN + RSS |
+| `GET /api/combined?limit=50` | 合并的 HN + RSS |
 
 ## 🔧 本地开发
 
@@ -116,7 +125,16 @@ cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+
+# 设置环境变量
+export DEBUG=true
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export REDIS_URL=redis://localhost:6379/0
+
+# 运行开发服务器
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ### 前端开发
@@ -170,6 +188,10 @@ kubectl logs -f deployment/redis -n hackernews
 **数据库连接失败**
 - 等待 PostgreSQL 完全启动
 - 检查 Service 名称是否正确
+
+**Django 迁移失败**
+- 进入 backend pod: `kubectl exec -it deployment/backend -n hackernews -- /bin/sh`
+- 手动运行迁移: `python manage.py migrate`
 
 ## 📄 License
 
