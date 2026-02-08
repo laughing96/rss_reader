@@ -30,7 +30,7 @@ class RSSFeed(models.Model):
         db_table = 'rss_feeds'
 
 class RSSItem(models.Model):
-    feed = models.ForeignKey(RSSFeed, on_delete=models.CASCADE)
+    feed = models.CharField(max_length=500)
     title = models.CharField(max_length=500)
     link = models.URLField(max_length=1000)
     description = models.TextField(null=True, blank=True)
