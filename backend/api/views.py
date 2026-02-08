@@ -78,9 +78,7 @@ class CombinedItemsView(APIView):
     def get(self, request):
         limit = int(request.query_params.get("limit", 50))
 
-        logger.info("fetch hn top stories") 
         hn_stories = fetch_hn_top_stories(limit=limit // 2)
-        logger.info(f"hn stories is {hn_stories}") 
         rss_items_data = fetch_all_rss_items()
 
         combined = []
