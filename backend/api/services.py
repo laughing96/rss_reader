@@ -119,6 +119,12 @@ def add_default_feeds():
     """Add default RSS feeds"""
     default_feeds = [
         {
+            "title": "Dev.to",
+            "url": "https://dev.to",
+            "feed_url": "https://dev.to/feed",
+            "description": "Developer Community and Programming Articles"
+        },
+        {
             "title": "TechCrunch",
             "url": "https://techcrunch.com",
             "feed_url": "https://techcrunch.com/feed/",
