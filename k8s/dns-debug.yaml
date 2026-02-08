@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-debug
+  namespace: hackernews
+spec:
+  restartPolicy: Never
+  dnsPolicy: "None"          # 自定义 dnsConfig 时通常需要
+  dnsConfig:
+    nameservers:
+      - 192.168.194.70      # 你的 CoreDNS IP
+    searches:
+      - hackernews.svc.cluster.local
+      - svc.cluster.local
+      - cluster.local
+    options:
+      - name: ndots
+        value: "5"
+  containers:
+  - name: dns-debug
+    image: alpine:3.18
+    command: ["sh"]
+    stdin: true
+    tty: true
