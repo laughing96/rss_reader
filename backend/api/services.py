@@ -2,8 +2,9 @@ import os
 import json
 import httpx
 import feedparser
+import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from django.core.cache import cache
 from .models import Story, RSSFeed, RSSItem
 
@@ -140,3 +141,82 @@ def add_default_feeds():
     for feed_data in default_feeds:
         if not RSSFeed.objects.filter(feed_url=feed_data["feed_url"]).exists():
             RSSFeed.objects.create(**feed_data)
+
+
+def parse_opml_file(file_content: str) -> Tuple[List[Dict[str, str]], List[str]]:
+    """
+    Parse OPML file and extract RSS feed information.
+    Returns tuple of (successful_feeds, errors).
+    """
+    feeds = []
+    errors = []
+    
+    try:
+        root = ET.fromstring(file_content)
+        
+        # OPML files have structure: <opml><body><outline ... /></body></opml>
+        # Each outline element represents a feed or folder
+        for outline in root.iter('outline'):
+            # Check if this is a feed (has xmlUrl attribute)
+            feed_url = outline.get('xmlUrl')
+            if feed_url:
+                feed_data = {
+                    'title': outline.get('title') or outline.get('text') or 'Untitled Feed',
+                    'url': outline.get('htmlUrl', ''),
+                    'feed_url': feed_url,
+                    'description': outline.get('description', '')
+                }
+                feeds.append(feed_data)
+            # Also check for nested outlines (folders)
+            else:
+                # Handle folder structure - check nested outlines
+                for nested_outline in outline.iter('outline'):
+                    nested_feed_url = nested_outline.get('xmlUrl')
+                    if nested_feed_url:
+                        feed_data = {
+                            'title': nested_outline.get('title') or nested_outline.get('text') or 'Untitled Feed',
+                            'url': nested_outline.get('htmlUrl', ''),
+                            'feed_url': nested_feed_url,
+                            'description': nested_outline.get('description', '')
+                        }
+                        if feed_data not in feeds:
+                            feeds.append(feed_data)
+                            
+    except ET.ParseError as e:
+        errors.append(f"Invalid XML format: {str(e)}")
+    except Exception as e:
+        errors.append(f"Error parsing OPML: {str(e)}")
+    
+    return feeds, errors
+
+
+def import_opml_feeds(file_content: str) -> Dict[str, Any]:
+    """
+    Import feeds from OPML file content.
+    Returns dict with import results.
+    """
+    feeds_data, parse_errors = parse_opml_file(file_content)
+    
+    added = []
+    skipped = []
+    failed = []
+    
+    for feed_data in feeds_data:
+        try:
+            if RSSFeed.objects.filter(feed_url=feed_data["feed_url"]).exists():
+                skipped.append(feed_data["feed_url"])
+            else:
+                RSSFeed.objects.create(**feed_data)
+                added.append(feed_data)
+                # Fetch initial items for the feed
+                fetch_rss_feed(RSSFeed.objects.get(feed_url=feed_data["feed_url"]).id)
+        except Exception as e:
+            failed.append({"feed": feed_data["feed_url"], "error": str(e)})
+    
+    return {
+        "added": added,
+        "skipped": skipped,
+        "failed": failed,
+        "parse_errors": parse_errors,
+        "total_found": len(feeds_data)
+    }

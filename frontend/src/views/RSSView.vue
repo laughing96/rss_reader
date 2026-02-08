@@ -2,6 +2,44 @@
   <div class="rss-view">
     <h2 class="page-title">📡 RSS 订阅</h2>
     
+    <!-- 导入 OPML 区域 -->
+    <div class="import-section">
+      <div class="import-buttons">
+        <button @click="showImportForm = !showImportForm" class="btn-toggle import-btn">
+          {{ showImportForm ? '取消' : '📁 导入 OPML 文件' }}
+        </button>
+      </div>
+      <form v-if="showImportForm" @submit.prevent="importOPML" class="import-form">
+        <div class="file-input-wrapper">
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".opml,.xml"
+            @change="handleFileSelect"
+            class="file-input"
+          />
+          <p class="file-hint">选择 .opml 或 .xml 文件 (支持包含文件夹结构)</p>
+        </div>
+        <button type="submit" :disabled="!selectedFile || importing" class="btn-import">
+          {{ importing ? '导入中...' : '开始导入' }}
+        </button>
+        <div v-if="importResult" class="import-result" :class="{ success: importResult.success, error: !importResult.success }">
+          <p><strong>{{ importResult.message }}</strong></p>
+          <p v-if="importResult.details">
+            总计: {{ importResult.details.total_found }} | 
+            成功: {{ importResult.added }} | 
+            跳过: {{ importResult.skipped }} | 
+            失败: {{ importResult.failed }}
+          </p>
+          <ul v-if="importResult.details && importResult.details.failed.length" class="failed-list">
+            <li v-for="(fail, index) in importResult.details.failed" :key="index">
+              {{ fail.feed }}: {{ fail.error }}
+            </li>
+          </ul>
+        </div>
+      </form>
+    </div>
+
     <!-- 添加 Feed 表单 -->
     <div class="add-feed-section">
       <button @click="showAddForm = !showAddForm" class="btn-toggle">
@@ -119,6 +157,11 @@ export default {
     const showAddForm = ref(false)
     const adding = ref(false)
     const refreshing = ref(false)
+    const showImportForm = ref(false)
+    const importing = ref(false)
+    const selectedFile = ref(null)
+    const importResult = ref(null)
+    const fileInput = ref(null)
     
     const newFeed = ref({
       title: '',
@@ -126,6 +169,54 @@ export default {
       feed_url: '',
       description: ''
     })
+
+    const handleFileSelect = (event) => {
+      selectedFile.value = event.target.files[0]
+      importResult.value = null
+    }
+
+    const importOPML = async () => {
+      if (!selectedFile.value) return
+      
+      try {
+        importing.value = true
+        importResult.value = null
+        
+        const formData = new FormData()
+        formData.append('file', selectedFile.value)
+        
+        const response = await axios.post('/api/rss/feeds/import', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        importResult.value = {
+          success: true,
+          message: response.data.message,
+          added: response.data.added,
+          skipped: response.data.skipped,
+          failed: response.data.failed,
+          details: response.data.details
+        }
+        
+        // Refresh feeds list after import
+        await fetchFeeds()
+        
+        // Reset file input
+        selectedFile.value = null
+        if (fileInput.value) {
+          fileInput.value.value = ''
+        }
+      } catch (err) {
+        importResult.value = {
+          success: false,
+          message: '导入失败: ' + (err.response?.data?.error || err.message)
+        }
+      } finally {
+        importing.value = false
+      }
+    }
 
     const currentFeedTitle = computed(() => {
       if (selectedFeed.value === null) return '全部 RSS'
@@ -247,6 +338,11 @@ export default {
       showAddForm,
       adding,
       refreshing,
+      showImportForm,
+      importing,
+      selectedFile,
+      importResult,
+      fileInput,
       newFeed,
       currentFeedTitle,
       selectFeed,
@@ -255,7 +351,9 @@ export default {
       refreshItems,
       formatTime,
       truncateText,
-      stripHtml
+      stripHtml,
+      handleFileSelect,
+      importOPML
     }
   }
 }
@@ -495,5 +593,92 @@ export default {
 .item-meta {
   font-size: 0.8rem;
   color: #999;
+}
+
+.import-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.import-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.import-btn {
+  background: #ff9800;
+}
+
+.import-btn:hover {
+  background: #f57c00;
+}
+
+.import-form {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.file-input-wrapper {
+  margin-bottom: 1rem;
+}
+
+.file-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.file-hint {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.btn-import {
+  padding: 0.5rem 1rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-import:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.import-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.import-result.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.import-result.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.failed-list {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.failed-list li {
+  margin-bottom: 0.25rem;
 }
 </style>

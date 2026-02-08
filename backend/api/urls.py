@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/rss/feeds/<int:feed_id>/refresh', views.RSSFeedRefreshView.as_view(), name='rss-feed-refresh'),
     path('api/rss/items', views.RSSItemsView.as_view(), name='rss-items'),
     path('api/combined', views.CombinedItemsView.as_view(), name='combined'),
+    path('api/rss/feeds/import', views.OPMLImportView.as_view(), name='rss-feeds-import'),
 ]

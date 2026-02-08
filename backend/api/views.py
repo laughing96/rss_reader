@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from .models import RSSFeed, RSSItem, Story
 from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer
-from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed
+from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed, import_opml_feeds
 
 
 class HNStoriesView(APIView):
@@ -136,3 +136,29 @@ def root(request):
 @api_view(["GET"])
 def health_check(request):
     return Response({"status": "healthy"})
+
+
+class OPMLImportView(APIView):
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {"error": "No file provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            file_content = file.read().decode('utf-8')
+            result = import_opml_feeds(file_content)
+            return Response({
+                "message": f"Imported {len(result['added'])} feeds",
+                "added": len(result['added']),
+                "skipped": len(result['skipped']),
+                "failed": len(result['failed']),
+                "details": result
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"Import failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
