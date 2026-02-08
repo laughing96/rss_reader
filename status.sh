@@ -12,6 +12,15 @@ echo "🔧 Services:"
 kubectl get svc -n hackernews
 
 echo ""
+echo "🌐 Ingress:"
+kubectl get ingress -n hackernews
+
+echo ""
+echo "🔗 访问地址:"
+echo "   主页面: http://hackernews.local"
+echo "   API:    http://hackernews.local/api/"
+
+echo ""
 echo "📊 资源使用:"
 kubectl top pods -n hackernews 2>/dev/null || echo "   (metrics-server 未安装)"
 
