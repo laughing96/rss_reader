@@ -240,7 +240,7 @@ export default {
     const fetchItems = async () => {
       try {
         itemsLoading.value = true
-        const params = selectedFeed.value ? { feed_id: selectedFeed.value } : {}
+        const params = selectedFeed.value ? { feed: selectedFeed.value } : {}
         const response = await axios.get('/api/rss/items', { params })
         items.value = response.data
       } catch (err) {

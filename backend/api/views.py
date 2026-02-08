@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.logger import logger 
+
 from .models import RSSFeed, RSSItem, Story
 from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer
 from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed, import_opml_feeds
@@ -40,16 +42,16 @@ class RSSFeedsView(APIView):
 
 
 class RSSFeedDetailView(APIView):
-    def delete(self, request, feed_id):
-        feed = get_object_or_404(RSSFeed, id=feed_id)
+    def delete(self, request, feed):
+        feed = get_object_or_404(RSSFeed, id=feed)
         RSSItem.objects.filter(feed=feed).delete()
         feed.delete()
         return Response({"message": "Feed deleted successfully"})
 
 
 class RSSFeedRefreshView(APIView):
-    def post(self, request, feed_id):
-        feed = get_object_or_404(RSSFeed, id=feed_id)
+    def post(self, request, feed):
+        feed = get_object_or_404(RSSFeed, id=feed)
         items = fetch_rss_feed(feed.id)
         return Response(
             {"message": f"Refreshed {len(items)} items", "feed": feed.title}
@@ -58,10 +60,10 @@ class RSSFeedRefreshView(APIView):
 
 class RSSItemsView(APIView):
     def get(self, request):
-        feed_id = request.query_params.get("feed_id")
+        feed = request.query_params.get("feed")
 
-        if feed_id:
-            feed = get_object_or_404(RSSFeed, id=feed_id)
+        if feed:
+            feed = get_object_or_404(RSSFeed, id=feed)
             fetch_rss_feed(feed.id)
             items = RSSItem.objects.filter(feed=feed).order_by("-published_at")
         else:
@@ -76,7 +78,9 @@ class CombinedItemsView(APIView):
     def get(self, request):
         limit = int(request.query_params.get("limit", 50))
 
+        logger.info("fetch hn top stories") 
         hn_stories = fetch_hn_top_stories(limit=limit // 2)
+        logger.info(f"hn stories is {hn_stories}") 
         rss_items_data = fetch_all_rss_items()
 
         combined = []
@@ -98,7 +102,7 @@ class CombinedItemsView(APIView):
             )
 
         for item_data in rss_items_data[: limit // 2]:
-            feed = RSSFeed.objects.filter(id=item_data["feed_id"]).first()
+            feed = RSSFeed.objects.filter(id=item_data["feed"]).first()
             combined.append(
                 {
                     "id": item_data["id"],

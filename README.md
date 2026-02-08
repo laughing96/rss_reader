@@ -112,7 +112,7 @@ open http://localhost:8080
 | `GET /api/rss/feeds` | RSS Feed 列表 |
 | `POST /api/rss/feeds` | 添加 RSS Feed |
 | `DELETE /api/rss/feeds/{id}` | 删除 RSS Feed |
-| `GET /api/rss/items?feed_id={id}` | RSS 文章列表 |
+| `GET /api/rss/items?feed={id}` | RSS 文章列表 |
 | `POST /api/rss/feeds/{id}/refresh` | 刷新 RSS Feed |
 | `GET /api/combined?limit=50` | 合并的 HN + RSS |
 

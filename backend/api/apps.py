@@ -8,7 +8,8 @@ class ApiConfig(AppConfig):
     def ready(self):
         try:
             from .services import add_default_feeds
-            add_default_feeds()
+            # add_default_feeds()
+            pass
         except (OperationalError, ProgrammingError):
             # Database not ready yet (migrations not run)
             pass

@@ -55,9 +55,9 @@ def fetch_hn_top_stories(limit: int = 30) -> List[Story]:
     cache.set(cache_key, json.dumps(stories_data), CACHE_TTL)
     return stories
 
-def fetch_rss_feed(feed_id: int) -> List[RSSItem]:
+def fetch_rss_feed(feed: int) -> List[RSSItem]:
     """Fetch RSS feed content"""
-    feed = RSSFeed.objects.filter(id=feed_id).first()
+    feed = RSSFeed.objects.filter(id=feed).first()
     if not feed:
         return []
     
@@ -104,7 +104,7 @@ def fetch_all_rss_items() -> List[Dict[str, Any]]:
         for item in items:
             all_items.append({
                 'id': item.id,
-                'feed_id': item.feed_id,
+                'feed': item.feed,
                 'title': item.title,
                 'link': item.link,
                 'description': item.description,
