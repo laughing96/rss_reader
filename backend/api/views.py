@@ -92,7 +92,7 @@ class CombinedItemsView(APIView):
                     "description": story.text,
                     "author": story.by,
                     "score": story.score,
-                    "time": story.time,
+                    "time": story.time.isoformat() if story.time else None,
                     "source": "Hacker News",
                 }
             )
