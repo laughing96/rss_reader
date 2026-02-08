@@ -40,3 +40,6 @@ coverage/
 
 # PostgreSQL data (Orbstack persistent volume)
 orbstack-pv/
+
+# local config
+rss.yaml
