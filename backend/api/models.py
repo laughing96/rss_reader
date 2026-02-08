@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Story(models.Model):
     hn_id = models.IntegerField(unique=True, db_index=True)
     title = models.CharField(max_length=500)
@@ -18,6 +19,7 @@ class Story(models.Model):
             models.Index(fields=['hn_id']),
         ]
 
+
 class RSSFeed(models.Model):
     title = models.CharField(max_length=500)
     url = models.URLField(max_length=1000)
@@ -28,6 +30,7 @@ class RSSFeed(models.Model):
 
     class Meta:
         db_table = 'rss_feeds'
+
 
 class RSSItem(models.Model):
     feed = models.CharField(max_length=500)

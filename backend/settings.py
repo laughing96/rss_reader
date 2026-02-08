@@ -42,6 +42,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'wsgi.application'
 
 # Database configuration - supports both DATABASE_URL and individual vars
+
+
 def get_database_config():
     database_url = os.getenv('DATABASE_URL')
     if database_url:
@@ -62,6 +64,7 @@ def get_database_config():
         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
+
 
 DATABASES = {
     'default': get_database_config()

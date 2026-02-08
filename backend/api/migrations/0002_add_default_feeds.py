@@ -4,7 +4,7 @@ from django.db import migrations
 def add_default_feeds(apps, schema_editor):
     """Add default RSS feeds including Dev.to"""
     RSSFeed = apps.get_model('api', 'RSSFeed')
-    
+
     default_feeds = [
         {
             "title": "Dev.to",
@@ -31,7 +31,7 @@ def add_default_feeds(apps, schema_editor):
             "description": "Technology and Science News"
         }
     ]
-    
+
     for feed_data in default_feeds:
         if not RSSFeed.objects.filter(feed_url=feed_data["feed_url"]).exists():
             RSSFeed.objects.create(**feed_data)
@@ -40,14 +40,14 @@ def add_default_feeds(apps, schema_editor):
 def remove_default_feeds(apps, schema_editor):
     """Remove default RSS feeds"""
     RSSFeed = apps.get_model('api', 'RSSFeed')
-    
+
     default_feed_urls = [
         "https://dev.to/feed",
         "https://techcrunch.com/feed/",
         "https://www.theverge.com/rss/index.xml",
         "https://feeds.arstechnica.com/arstechnica/index"
     ]
-    
+
     RSSFeed.objects.filter(feed_url__in=default_feed_urls).delete()
 
 

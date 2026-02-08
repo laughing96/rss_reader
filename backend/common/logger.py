@@ -10,6 +10,7 @@ if not os.path.exists(LOG_DIR):
 # 日志文件路径
 LOG_FILE = os.path.join(LOG_DIR, "app.log")
 
+
 def get_logger(name="my_logger", level=logging.INFO):
     """
     创建一个 logger
@@ -45,4 +46,6 @@ def get_logger(name="my_logger", level=logging.INFO):
     logger.addHandler(file_handler)
 
     return logger
+
+
 logger = get_logger(name='rss_reader', level=logging.INFO)

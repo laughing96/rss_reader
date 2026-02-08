@@ -1,5 +1,4 @@
 import json
-import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from django.utils import timezone
@@ -20,7 +19,7 @@ CACHE_TTL = 300  # 5 minutes
 
 def fetch_hn_top_stories(limit: int = 30) -> List[Story]:
     """Fetch Hacker News top stories"""
-    cache_key = f"hn_top_stories_{limit}"
+    cache_key = f"hn_top_stories{limit}"
     cached = cache.get(cache_key)
 
     if cached:
@@ -71,7 +70,8 @@ def fetch_rss_feed(feed: int) -> List[RSSItem]:
     items = []
 
     for entry in parsed.entries[:30]:
-        existing = RSSItem.objects.filter(feed=feed.id, link=entry.link).first()
+        existing = RSSItem.objects.filter(
+            feed=feed.id, link=entry.link).first()
 
         if not existing:
             published = None
@@ -91,7 +91,7 @@ def fetch_rss_feed(feed: int) -> List[RSSItem]:
         else:
             items.append(existing)
 
-    feed.last_fetched = timezone.now() 
+    feed.last_fetched = timezone.now()
     feed.save()
 
     return items
@@ -118,11 +118,9 @@ def fetch_all_rss_items() -> List[Dict[str, Any]]:
                     "link": item.link,
                     "description": item.description,
                     "published_at": (
-                        item.published_at.isoformat() if item.published_at else None
-                    ),
+                        item.published_at.isoformat() if item.published_at else None),
                     "created_at": item.created_at.isoformat(),
-                }
-            )
+                })
 
     cache.set(cache_key, json.dumps(all_items), CACHE_TTL)
     return all_items
@@ -162,7 +160,8 @@ def add_default_feeds():
             RSSFeed.objects.create(**feed_data)
 
 
-def parse_opml_file(file_content: str) -> Tuple[List[Dict[str, str]], List[str]]:
+def parse_opml_file(
+        file_content: str) -> Tuple[List[Dict[str, str]], List[str]]:
     """
     Parse OPML file and extract RSS feed information.
     Returns tuple of (successful_feeds, errors).
@@ -232,7 +231,9 @@ def import_opml_feeds(file_content: str) -> Dict[str, Any]:
                 RSSFeed.objects.create(**feed_data)
                 added.append(feed_data)
                 # Fetch initial items for the feed
-                fetch_rss_feed(RSSFeed.objects.get(feed_url=feed_data["feed_url"]).id)
+                fetch_rss_feed(
+                    RSSFeed.objects.get(
+                        feed_url=feed_data["feed_url"]).id)
         except Exception as e:
             failed.append({"feed": feed_data["feed_url"], "error": str(e)})
 

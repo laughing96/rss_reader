@@ -1,13 +1,11 @@
-from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.logger import logger 
 
-from .models import RSSFeed, RSSItem, Story
+from .models import RSSFeed, RSSItem
 from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer
 from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed, import_opml_feeds
 
@@ -148,7 +146,7 @@ class OPMLImportView(APIView):
                 {"error": "No file provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             file_content = file.read().decode('utf-8')
             result = import_opml_feeds(file_content)
