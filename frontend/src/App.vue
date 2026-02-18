@@ -96,23 +96,30 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
 }
-
 .nav-menu {
+  display: flex;
+  justify-content: center; /* 菜单在中间 */
+  flex: 1;
   border-bottom: none !important;
   background-color: transparent !important;
+  padding: 0;
 }
 
+/* 每个菜单项平分宽度并居中 */
 .nav-menu :deep(.el-menu-item) {
+  flex: 1;
+  text-align: center;
   font-size: 0.95rem;
   border-bottom: none !important;
 }
 
+/* hover 和 active 效果 */
 .nav-menu :deep(.el-menu-item:hover) {
-  background-color: rgba(255,255,255,0.15) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .nav-menu :deep(.el-menu-item.is-active) {
-  background-color: rgba(255,255,255,0.2) !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
   border-bottom: 2px solid white !important;
 }
 
