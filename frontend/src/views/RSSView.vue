@@ -2,6 +2,31 @@
   <div class="rss-view">
     <h2 class="page-title">📡 RSS 订阅</h2>
     
+    <!-- 文件夹管理区域 -->
+    <div class="folders-section">
+      <div class="section-header">
+        <button @click="showFolderForm = !showFolderForm" class="btn-toggle folder-btn">
+          {{ showFolderForm ? '取消' : '📁 新建文件夹' }}
+        </button>
+      </div>
+      <form v-if="showFolderForm" @submit.prevent="createFolder" class="folder-form">
+        <input 
+          v-model="newFolder.name" 
+          placeholder="文件夹名称" 
+          required
+        />
+        <select v-model="newFolder.parent">
+          <option :value="null">根文件夹</option>
+          <option v-for="folder in flatFolders" :key="folder.id" :value="folder.id">
+            {{ '  '.repeat(folder.depth) }}{{ folder.name }}
+          </option>
+        </select>
+        <button type="submit" :disabled="creatingFolder">
+          {{ creatingFolder ? '创建中...' : '创建' }}
+        </button>
+      </form>
+    </div>
+
     <!-- 导入 OPML 区域 -->
     <div class="import-section">
       <div class="import-buttons">
@@ -66,6 +91,12 @@
           placeholder="描述 (可选)"
           rows="2"
         ></textarea>
+        <select v-model="newFeed.folder">
+          <option :value="null">不放入文件夹</option>
+          <option v-for="folder in flatFolders" :key="folder.id" :value="folder.id">
+            {{ '  '.repeat(folder.depth) }}{{ folder.name }}
+          </option>
+        </select>
         <button type="submit" :disabled="adding">
           {{ adding ? '添加中...' : '添加' }}
         </button>
@@ -84,21 +115,87 @@
       <!-- Feed 选择器 -->
       <div class="feeds-sidebar">
         <h3>订阅源</h3>
-        <div class="feeds-list">
-          <button 
-            v-for="feed in feeds" 
-            :key="feed.id"
-            :class="['feed-btn', { active: selectedFeed === feed.id }]"
-            @click="selectFeed(feed.id)"
+        
+        <!-- 文件夹树形结构 -->
+        <div class="folder-tree">
+          <div 
+            v-for="folder in folders" 
+            :key="folder.id"
+            class="folder-item"
           >
-            <span class="feed-name">{{ feed.title }}</span>
-            <span class="delete-btn" @click.stop="deleteFeed(feed.id)">×</span>
-          </button>
+            <div class="folder-header">
+              <span 
+                class="folder-toggle"
+                @click="toggleFolder(folder.id)"
+              >
+                {{ isExpanded(folder.id) ? '▼' : '▶' }}
+              </span>
+              <button 
+                :class="['folder-name', { active: selectedFolder === folder.id }]"
+                @click="selectFolder(folder.id)"
+              >
+                📁 {{ folder.name }}
+              </button>
+              <span class="folder-count">({{ folder.feed_count }})</span>
+              <span class="folder-actions">
+                <span class="edit-btn" @click.stop="editFolder(folder)">✏️</span>
+                <span class="delete-btn" @click.stop="deleteFolder(folder.id)">×</span>
+              </span>
+            </div>
+            
+            <!-- 文件夹内的feeds -->
+            <div v-if="isExpanded(folder.id)" class="folder-feeds">
+              <button 
+                v-for="feed in getFeedsInFolder(folder.id)" 
+                :key="feed.id"
+                :class="['feed-btn', { active: selectedFeed === feed.id }]"
+                @click="selectFeed(feed.id)"
+              >
+                <span class="feed-name">📄 {{ feed.title }}</span>
+                <span class="delete-btn" @click.stop="deleteFeed(feed.id)">×</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 未分类 Feeds -->
+        <div class="folder-item">
+          <div class="folder-header">
+            <span 
+              class="folder-toggle"
+              @click="toggleFolder('uncategorized')"
+            >
+              {{ isExpanded('uncategorized') ? '▼' : '▶' }}
+            </span>
+            <button 
+              :class="['folder-name', { active: selectedFolder === 'uncategorized' }]"
+              @click="selectFolder('uncategorized')"
+            >
+              📁 未分类
+            </button>
+            <span class="folder-count">({{ uncategorizedFeeds.length }})</span>
+          </div>
+          
+          <div v-if="isExpanded('uncategorized')" class="folder-feeds">
+            <button 
+              v-for="feed in uncategorizedFeeds" 
+              :key="feed.id"
+              :class="['feed-btn', { active: selectedFeed === feed.id }]"
+              @click="selectFeed(feed.id)"
+            >
+              <span class="feed-name">📄 {{ feed.title }}</span>
+              <span class="delete-btn" @click.stop="deleteFeed(feed.id)">×</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 全部 RSS -->
+        <div class="folder-item">
           <button 
-            :class="['feed-btn', { active: selectedFeed === null }]"
+            :class="['feed-btn all-feeds', { active: selectedFeed === null && selectedFolder === null }]"
             @click="selectFeed(null)"
           >
-            全部 RSS
+            📑 全部 RSS ({{ feeds.length }})
           </button>
         </div>
       </div>
@@ -107,6 +204,9 @@
       <div class="items-section">
         <div class="items-header">
           <h3>{{ currentFeedTitle }}</h3>
+          <button v-if="selectedFeed" @click="showMoveModal = true" class="btn-move">
+            移动到文件夹
+          </button>
           <button @click="refreshItems" :disabled="refreshing" class="btn-refresh">
             {{ refreshing ? '刷新中...' : '↻ 刷新' }}
           </button>
@@ -136,6 +236,47 @@
         </div>
       </div>
     </div>
+    
+    <!-- 编辑文件夹模态框 -->
+    <div v-if="showEditFolderModal" class="modal-overlay" @click.self="showEditFolderModal = false">
+      <div class="modal">
+        <h3>编辑文件夹</h3>
+        <form @submit.prevent="updateFolder">
+          <input 
+            v-model="editingFolder.name" 
+            placeholder="文件夹名称" 
+            required
+          />
+          <select v-model="editingFolder.parent">
+            <option :value="null">根文件夹</option>
+            <option v-for="folder in flatFolders.filter(f => f.id !== editingFolder.id)" :key="folder.id" :value="folder.id">
+              {{ '  '.repeat(folder.depth) }}{{ folder.name }}
+            </option>
+          </select>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" @click="showEditFolderModal = false" class="btn-secondary">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 移动Feed模态框 -->
+    <div v-if="showMoveModal" class="modal-overlay" @click.self="showMoveModal = false">
+      <div class="modal">
+        <h3>移动 Feed 到文件夹</h3>
+        <select v-model="targetFolderId">
+          <option :value="null">不放入文件夹</option>
+          <option v-for="folder in flatFolders" :key="folder.id" :value="folder.id">
+            {{ '  '.repeat(folder.depth) }}{{ folder.name }}
+          </option>
+        </select>
+        <div class="modal-actions">
+          <button @click="moveFeed" class="btn-primary">移动</button>
+          <button @click="showMoveModal = false" class="btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -149,11 +290,13 @@ export default {
   name: 'RSSView',
   setup() {
     const feeds = ref([])
+    const folders = ref([])
     const items = ref([])
     const loading = ref(true)
     const itemsLoading = ref(false)
     const error = ref(null)
     const selectedFeed = ref(null)
+    const selectedFolder = ref(null)
     const showAddForm = ref(false)
     const adding = ref(false)
     const refreshing = ref(false)
@@ -163,11 +306,26 @@ export default {
     const importResult = ref(null)
     const fileInput = ref(null)
     
+    // 文件夹管理
+    const showFolderForm = ref(false)
+    const creatingFolder = ref(false)
+    const expandedFolders = ref(['uncategorized'])
+    const showEditFolderModal = ref(false)
+    const editingFolder = ref({ id: null, name: '', parent: null })
+    const showMoveModal = ref(false)
+    const targetFolderId = ref(null)
+    
+    const newFolder = ref({
+      name: '',
+      parent: null
+    })
+    
     const newFeed = ref({
       title: '',
       url: '',
       feed_url: '',
-      description: ''
+      description: '',
+      folder: null
     })
 
     const handleFileSelect = (event) => {
@@ -200,10 +358,9 @@ export default {
           details: response.data.details
         }
         
-        // Refresh feeds list after import
         await fetchFeeds()
+        await fetchFolders()
         
-        // Reset file input
         selectedFile.value = null
         if (fileInput.value) {
           fileInput.value.value = ''
@@ -219,9 +376,42 @@ export default {
     }
 
     const currentFeedTitle = computed(() => {
+      if (selectedFolder.value) {
+        if (selectedFolder.value === 'uncategorized') {
+          return '未分类 Feeds'
+        }
+        const folder = folders.value.find(f => f.id === selectedFolder.value)
+        return folder ? `📁 ${folder.name}` : '全部 RSS'
+      }
       if (selectedFeed.value === null) return '全部 RSS'
       const feed = feeds.value.find(f => f.id === selectedFeed.value)
       return feed ? feed.title : '全部 RSS'
+    })
+    
+    // 将文件夹扁平化用于下拉选择
+    const flattenFolders = (foldersList, depth = 0) => {
+      let result = []
+      foldersList.forEach(folder => {
+        result.push({ ...folder, depth })
+        if (folder.children && folder.children.length > 0) {
+          result = result.concat(flattenFolders(folder.children, depth + 1))
+        }
+      })
+      return result
+    }
+    
+    const flatFolders = computed(() => {
+      return flattenFolders(folders.value)
+    })
+    
+    // 获取文件夹内的feeds
+    const getFeedsInFolder = (folderId) => {
+      return feeds.value.filter(feed => feed.folder === folderId)
+    }
+    
+    // 未分类的feeds
+    const uncategorizedFeeds = computed(() => {
+      return feeds.value.filter(feed => !feed.folder)
     })
 
     const fetchFeeds = async () => {
@@ -236,11 +426,31 @@ export default {
         loading.value = false
       }
     }
+    
+    const fetchFolders = async () => {
+      try {
+        const response = await axios.get('/api/rss/folders')
+        folders.value = response.data
+      } catch (err) {
+        console.error('Failed to fetch folders:', err)
+      }
+    }
 
     const fetchItems = async () => {
       try {
         itemsLoading.value = true
-        const params = selectedFeed.value ? { feed: selectedFeed.value } : {}
+        let params = {}
+        
+        if (selectedFolder.value) {
+          if (selectedFolder.value === 'uncategorized') {
+            params = { feed: null }
+          } else {
+            params = { folder: selectedFolder.value }
+          }
+        } else if (selectedFeed.value) {
+          params = { feed: selectedFeed.value }
+        }
+        
         const response = await axios.get('/api/rss/items', { params })
         items.value = response.data
       } catch (err) {
@@ -249,17 +459,103 @@ export default {
         itemsLoading.value = false
       }
     }
+    
+    const toggleFolder = (folderId) => {
+      const index = expandedFolders.value.indexOf(folderId)
+      if (index > -1) {
+        expandedFolders.value.splice(index, 1)
+      } else {
+        expandedFolders.value.push(folderId)
+      }
+    }
+    
+    const isExpanded = (folderId) => {
+      return expandedFolders.value.includes(folderId)
+    }
+    
+    const selectFolder = (folderId) => {
+      selectedFolder.value = folderId
+      selectedFeed.value = null
+      fetchItems()
+    }
 
     const selectFeed = (feedId) => {
       selectedFeed.value = feedId
+      selectedFolder.value = null
       fetchItems()
+    }
+    
+    const createFolder = async () => {
+      try {
+        creatingFolder.value = true
+        await axios.post('/api/rss/folders', newFolder.value)
+        newFolder.value = { name: '', parent: null }
+        showFolderForm.value = false
+        await fetchFolders()
+      } catch (err) {
+        alert('创建文件夹失败: ' + err.message)
+      } finally {
+        creatingFolder.value = false
+      }
+    }
+    
+    const editFolder = (folder) => {
+      editingFolder.value = {
+        id: folder.id,
+        name: folder.name,
+        parent: folder.parent
+      }
+      showEditFolderModal.value = true
+    }
+    
+    const updateFolder = async () => {
+      try {
+        await axios.put(`/api/rss/folders/${editingFolder.value.id}`, {
+          name: editingFolder.value.name,
+          parent: editingFolder.value.parent
+        })
+        showEditFolderModal.value = false
+        await fetchFolders()
+        await fetchFeeds()
+      } catch (err) {
+        alert('更新文件夹失败: ' + err.message)
+      }
+    }
+    
+    const deleteFolder = async (folderId) => {
+      if (!confirm('确定要删除这个文件夹吗？文件夹内的feeds将变为未分类。')) return
+      try {
+        await axios.delete(`/api/rss/folders/${folderId}`)
+        if (selectedFolder.value === folderId) {
+          selectedFolder.value = null
+          selectedFeed.value = null
+        }
+        await fetchFolders()
+        await fetchFeeds()
+      } catch (err) {
+        alert('删除文件夹失败: ' + err.message)
+      }
+    }
+    
+    const moveFeed = async () => {
+      if (!selectedFeed.value) return
+      try {
+        await axios.post(`/api/rss/feeds/${selectedFeed.value}/move`, {
+          folder: targetFolderId.value
+        })
+        showMoveModal.value = false
+        targetFolderId.value = null
+        await fetchFeeds()
+      } catch (err) {
+        alert('移动失败: ' + err.message)
+      }
     }
 
     const addFeed = async () => {
       try {
         adding.value = true
         await axios.post('/api/rss/feeds', newFeed.value)
-        newFeed.value = { title: '', url: '', feed_url: '', description: '' }
+        newFeed.value = { title: '', url: '', feed_url: '', description: '', folder: null }
         showAddForm.value = false
         await fetchFeeds()
         await fetchItems()
@@ -323,6 +619,7 @@ export default {
     }
 
     onMounted(() => {
+      fetchFolders()
       fetchFeeds().then(() => {
         fetchItems()
       })
@@ -330,11 +627,14 @@ export default {
 
     return {
       feeds,
+      folders,
+      flatFolders,
       items,
       loading,
       itemsLoading,
       error,
       selectedFeed,
+      selectedFolder,
       showAddForm,
       adding,
       refreshing,
@@ -344,8 +644,17 @@ export default {
       importResult,
       fileInput,
       newFeed,
+      showFolderForm,
+      creatingFolder,
+      newFolder,
+      showEditFolderModal,
+      editingFolder,
+      showMoveModal,
+      targetFolderId,
+      uncategorizedFeeds,
       currentFeedTitle,
       selectFeed,
+      selectFolder,
       addFeed,
       deleteFeed,
       refreshItems,
@@ -353,7 +662,15 @@ export default {
       truncateText,
       stripHtml,
       handleFileSelect,
-      importOPML
+      importOPML,
+      createFolder,
+      editFolder,
+      updateFolder,
+      deleteFolder,
+      moveFeed,
+      toggleFolder,
+      isExpanded,
+      getFeedsInFolder
     }
   }
 }
@@ -368,6 +685,58 @@ export default {
   margin-bottom: 1.5rem;
   color: #2196f3;
   font-size: 1.5rem;
+}
+
+.folders-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.section-header {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.folder-btn {
+  background: #9c27b0;
+}
+
+.folder-btn:hover {
+  background: #7b1fa2;
+}
+
+.folder-form {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.folder-form input,
+.folder-form select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.folder-form button {
+  padding: 0.5rem 1rem;
+  background: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.folder-form button:disabled {
+  background: #ccc;
 }
 
 .add-feed-section {
@@ -400,7 +769,8 @@ export default {
 }
 
 .add-feed-form input,
-.add-feed-form textarea {
+.add-feed-form textarea,
+.add-feed-form select {
   padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -448,7 +818,7 @@ export default {
 
 .content-wrapper {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 1rem;
 }
 
@@ -471,23 +841,102 @@ export default {
   color: #333;
 }
 
-.feeds-list {
+.folder-tree {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
+}
+
+.folder-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+}
+
+.folder-toggle {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.8rem;
+  width: 20px;
+  text-align: center;
+}
+
+.folder-name {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.folder-name:hover {
+  background: #e3f2fd;
+}
+
+.folder-name.active {
+  background: #2196f3;
+  color: white;
+}
+
+.folder-count {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.edit-btn,
+.delete-btn {
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.edit-btn:hover {
+  background: #e3f2fd;
+}
+
+.delete-btn {
+  color: #f44336;
+}
+
+.delete-btn:hover {
+  background: #ffebee;
+}
+
+.folder-feeds {
+  margin-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .feed-btn {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
+  padding: 0.3rem 0.5rem;
   background: #f5f5f5;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
   transition: background 0.2s;
+  font-size: 0.85rem;
 }
 
 .feed-btn:hover {
@@ -499,22 +948,24 @@ export default {
   color: white;
 }
 
+.feed-btn.all-feeds {
+  background: #4caf50;
+  color: white;
+}
+
+.feed-btn.all-feeds:hover {
+  background: #45a049;
+}
+
+.feed-btn.all-feeds.active {
+  background: #2e7d32;
+}
+
 .feed-name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.delete-btn {
-  padding: 0 0.3rem;
-  color: #f44336;
-  font-weight: bold;
-}
-
-.delete-btn:hover {
-  background: #ffebee;
-  border-radius: 4px;
 }
 
 .items-section {
@@ -529,10 +980,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  gap: 0.5rem;
 }
 
 .items-header h3 {
   color: #333;
+  flex: 1;
 }
 
 .btn-refresh {
@@ -547,6 +1000,20 @@ export default {
 
 .btn-refresh:disabled {
   background: #ccc;
+}
+
+.btn-move {
+  padding: 0.3rem 0.8rem;
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-move:hover {
+  background: #f57c00;
 }
 
 .items-list {
@@ -680,5 +1147,75 @@ export default {
 
 .failed-list li {
   margin-bottom: 0.25rem;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal h3 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.modal input,
+.modal select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  padding: 0.5rem 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #1976d2;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #d0d0d0;
 }
 </style>

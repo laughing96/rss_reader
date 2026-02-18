@@ -27,6 +27,18 @@ urlpatterns = [
         views.RSSFeedRefreshView.as_view(),
         name='rss-feed-refresh'),
     path(
+        'api/rss/feeds/<int:feed>/move',
+        views.MoveFeedToFolderView.as_view(),
+        name='move-feed-to-folder'),
+    path(
+        'api/rss/folders',
+        views.FoldersView.as_view(),
+        name='rss-folders'),
+    path(
+        'api/rss/folders/<int:folder>',
+        views.FolderDetailView.as_view(),
+        name='rss-folder-detail'),
+    path(
         'api/rss/items',
         views.RSSItemsView.as_view(),
         name='rss-items'),

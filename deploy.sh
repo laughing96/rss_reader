@@ -11,7 +11,7 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-if ! kubectl cluster-info &> /dev/null; then
+if ! kubectl cluster-info &> /dev/null ; then
     echo "❌ Kubernetes 集群未运行，请启动 Orbstack Kubernetes"
     exit 1
 fi

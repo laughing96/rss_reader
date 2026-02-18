@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 
-from .models import RSSFeed, RSSItem
-from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer
+from .models import RSSFeed, RSSItem, Folder
+from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer, FolderSerializer
 from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed, import_opml_feeds
 
 
@@ -15,6 +15,87 @@ class HNStoriesView(APIView):
         limit = int(request.query_params.get("limit", 30))
         stories = fetch_hn_top_stories(limit=limit)
         serializer = StorySerializer(stories, many=True)
+        return Response(serializer.data)
+
+
+class FoldersView(APIView):
+    def get(self, request):
+        folder_id = request.query_params.get("folder")
+        if folder_id:
+            folder = get_object_or_404(Folder, id=folder_id)
+            feeds = folder.feeds.all()
+            feed_serializer = RSSFeedSerializer(feeds, many=True)
+            folder_serializer = FolderSerializer(folder)
+            return Response({
+                "folder": folder_serializer.data,
+                "feeds": feed_serializer.data
+            })
+        else:
+            folders = Folder.objects.filter(parent=None)
+            serializer = FolderSerializer(folders, many=True)
+            return Response(serializer.data)
+
+    def post(self, request):
+        name = request.data.get("name")
+        parent_id = request.data.get("parent")
+
+        if Folder.objects.filter(name=name, parent_id=parent_id).exists():
+            return Response(
+                {"detail": "Folder already exists"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = {
+            "name": name,
+            "parent": parent_id
+        }
+        serializer = FolderSerializer(data=data)
+        if serializer.is_valid():
+            folder = serializer.save()
+            print(folder)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FolderDetailView(APIView):
+    def get(self, request, folder):
+        folder_obj = get_object_or_404(Folder, id=folder)
+        serializer = FolderSerializer(folder_obj)
+        return Response(serializer.data)
+
+    def put(self, request, folder):
+        folder_obj = get_object_or_404(Folder, id=folder)
+        name = request.data.get("name", folder_obj.name)
+        parent_id = request.data.get("parent", folder_obj.parent_id)
+
+        folder_obj.name = name
+        if parent_id is not None:
+            folder_obj.parent_id = parent_id
+        folder_obj.save()
+
+        serializer = FolderSerializer(folder_obj)
+        return Response(serializer.data)
+
+    def delete(self, request, folder):
+        folder_obj = get_object_or_404(Folder, id=folder)
+
+        folder_obj.feeds.update(folder=None)
+        folder_obj.delete()
+        return Response({"message": "Folder deleted successfully"})
+
+
+class MoveFeedToFolderView(APIView):
+    def post(self, request, feed):
+        feed_obj = get_object_or_404(RSSFeed, id=feed)
+        folder_id = request.data.get("folder")
+
+        if folder_id:
+            folder = get_object_or_404(Folder, id=folder_id)
+            feed_obj.folder = folder
+        else:
+            feed_obj.folder = None
+
+        feed_obj.save()
+        serializer = RSSFeedSerializer(feed_obj)
         return Response(serializer.data)
 
 

@@ -20,6 +20,24 @@ class Story(models.Model):
         ]
 
 
+class Folder(models.Model):
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='children'
+    )
+
+    class Meta:
+        db_table = 'folders'
+
+    def __str__(self):
+        return self.name
+
+
 class RSSFeed(models.Model):
     title = models.CharField(max_length=500)
     url = models.URLField(max_length=1000)
@@ -27,6 +45,13 @@ class RSSFeed(models.Model):
     description = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_fetched = models.DateTimeField(null=True, blank=True)
+    folder = models.ForeignKey(
+        Folder,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='feeds'
+    )
 
     class Meta:
         db_table = 'rss_feeds'
