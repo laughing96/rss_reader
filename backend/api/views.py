@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from .models import RSSFeed, RSSItem, Folder
 from .serializers import RSSFeedSerializer, RSSItemSerializer, StorySerializer, FolderSerializer
+from common.logger import logger
 from .services import fetch_all_rss_items, fetch_hn_top_stories, fetch_rss_feed, import_opml_feeds
 
 
@@ -156,9 +157,16 @@ class RSSItemsView(APIView):
 class CombinedItemsView(APIView):
     def get(self, request):
         limit = int(request.query_params.get("limit", 50))
-
-        hn_stories = fetch_hn_top_stories(limit=limit // 2)
-        rss_items_data = fetch_all_rss_items()
+        try:
+            hn_stories = fetch_hn_top_stories(limit=limit // 2)
+        except Exception as e:
+            hn_stories = []
+            logger.exception(f'fetch hn top error: {e}')
+        try:
+            rss_items_data = fetch_all_rss_items()
+        except Exception as e:
+            rss_items_data = []
+            logger.exception(f"fetch all rss error: {e}")
 
         combined = []
 

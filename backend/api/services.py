@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 import feedparser
 import httpx
 from django.core.cache import cache
+import pytz
 
 from .models import RSSFeed, RSSItem, Story
 
@@ -78,7 +79,7 @@ def fetch_rss_feed(feed: int) -> List[RSSItem]:
             if hasattr(entry, "published_parsed") and entry.published_parsed:
                 naive_published = datetime(*entry.published_parsed[:6])
                 # 转为 aware datetime（假设是 UTC 时间）
-                published = timezone.make_aware(naive_published, timezone.utc)
+                published = timezone.make_aware(naive_published, pytz.timezone('Asia/Shanghai'))
 
             item = RSSItem.objects.create(
                 feed=feed.id,
