@@ -1,31 +1,54 @@
 <template>
-  <div id="app">
-    <nav class="navbar">
-      <div class="nav-brand">
-        <span class="logo">📰</span>
-        <h1>HN + RSS Reader</h1>
+  <el-container class="app-container">
+    <el-header class="app-header">
+      <div class="header-content">
+        <div class="logo">
+          <el-icon :size="28" color="#fff"><Reading /></el-icon>
+          <span class="logo-text">HN + RSS Reader</span>
+        </div>
+        <el-menu
+          :default-active="$route.path"
+          class="nav-menu"
+          mode="horizontal"
+          background-color="#ff6600"
+          text-color="#fff"
+          active-text-color="#fff"
+          router
+        >
+          <el-menu-item index="/">
+            <el-icon><House /></el-icon>
+            <span>全部</span>
+          </el-menu-item>
+          <el-menu-item index="/hackernews">
+            <el-icon><TrendCharts /></el-icon>
+            <span>Hacker News</span>
+          </el-menu-item>
+          <el-menu-item index="/rss">
+            <el-icon><Collection /></el-icon>
+            <span>RSS Feeds</span>
+          </el-menu-item>
+        </el-menu>
       </div>
-      <div class="nav-links">
-        <router-link to="/" :class="{ active: $route.path === '/' }">
-          全部
-        </router-link>
-        <router-link to="/hackernews" :class="{ active: $route.path === '/hackernews' }">
-          Hacker News
-        </router-link>
-        <router-link to="/rss" :class="{ active: $route.path === '/rss' }">
-          RSS Feeds
-        </router-link>
-      </div>
-    </nav>
-    <main class="main-content">
+    </el-header>
+    <el-main class="app-main">
       <router-view />
-    </main>
-  </div>
+    </el-main>
+  </el-container>
 </template>
 
 <script>
+import { House, TrendCharts, Collection, Reading } from '@element-plus/icons-vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  setup() {
+    return {
+      House,
+      TrendCharts,
+      Collection,
+      Reading
+    }
+  }
 }
 </script>
 
@@ -38,73 +61,85 @@ export default {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: #f6f6ef;
-  color: #333;
+  background-color: #f5f7fa;
 }
 
-.navbar {
+.app-container {
+  min-height: 100vh;
+}
+
+.app-header {
   background-color: #ff6600;
-  padding: 0.5rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 0;
+  height: 60px !important;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.nav-brand {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
 }
 
-.nav-brand .logo {
-  font-size: 1.5rem;
-}
-
-.nav-brand h1 {
+.logo-text {
   color: white;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
-.nav-links {
-  display: flex;
-  gap: 1rem;
+.nav-menu {
+  border-bottom: none !important;
+  background-color: transparent !important;
 }
 
-.nav-links a {
-  color: white;
-  text-decoration: none;
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  font-size: 0.9rem;
+.nav-menu :deep(.el-menu-item) {
+  font-size: 0.95rem;
+  border-bottom: none !important;
 }
 
-.nav-links a:hover,
-.nav-links a.active {
-  background-color: rgba(255,255,255,0.2);
+.nav-menu :deep(.el-menu-item:hover) {
+  background-color: rgba(255,255,255,0.15) !important;
 }
 
-.main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+.nav-menu :deep(.el-menu-item.is-active) {
+  background-color: rgba(255,255,255,0.2) !important;
+  border-bottom: 2px solid white !important;
 }
 
+.app-main {
+  padding: 0;
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 60px);
+}
+
+/* 响应式 */
 @media (max-width: 768px) {
-  .navbar {
+  .header-content {
     flex-direction: column;
-    gap: 0.5rem;
+    padding: 10px;
   }
   
-  .nav-links {
-    gap: 0.5rem;
+  .app-header {
+    height: auto !important;
+    min-height: 60px;
   }
   
-  .nav-links a {
-    font-size: 0.8rem;
-    padding: 0.2rem 0.5rem;
+  .nav-menu {
+    margin-top: 10px;
+  }
+  
+  .app-main {
+    min-height: calc(100vh - 100px);
   }
 }
 </style>

@@ -1,38 +1,57 @@
 <template>
   <div class="hn-view">
-    <h2 class="page-title">🔥 Hacker News 热门</h2>
-    <div v-if="loading" class="loading">
-      <div class="spinner"></div>
-      <p>加载中...</p>
-    </div>
-    <div v-else-if="error" class="error">
-      {{ error }}
-    </div>
-    <div v-else class="items-list">
-      <article 
-        v-for="(story, index) in stories" 
-        :key="story.id"
-        class="news-item"
-      >
-        <div class="rank">{{ index + 1 }}</div>
-        <div class="content">
-          <h3 class="item-title">
-            <a :href="story.url || `https://news.ycombinator.com/item?id=${story.hn_id}`" 
-               target="_blank" rel="noopener">
-              {{ story.title }}
-            </a>
-          </h3>
-          <div class="item-meta">
-            <span class="score">⭐ {{ story.score }} 分</span>
-            <span class="author">👤 {{ story.by }}</span>
-            <span class="comments">
-              💬 {{ story.descendants }} 评论
-            </span>
-            <span class="time">🕐 {{ formatTime(story.time) }}</span>
-          </div>
+    <el-page-header title="首页" content="Hacker News 热门" />
+    
+    <el-row :gutter="20" class="content-row">
+      <el-col :span="24">
+        <div v-loading="loading" class="items-container">
+          <el-empty v-if="stories.length === 0 && !loading" description="暂无内容" />
+          
+          <el-card 
+            v-for="(story, index) in stories" 
+            :key="story.id"
+            class="story-card"
+            shadow="hover"
+            :body-style="{ padding: '15px' }"
+          >
+            <div class="story-content">
+              <el-avatar 
+                :size="40" 
+                :class="['rank-avatar', index < 3 ? 'top-rank' : '']"
+              >
+                {{ index + 1 }}
+              </el-avatar>
+              
+              <div class="story-info">
+                <h4 class="story-title">
+                  <a :href="story.url || `https://news.ycombinator.com/item?id=${story.hn_id}`" 
+                     target="_blank" rel="noopener">
+                    {{ story.title }}
+                  </a>
+                </h4>
+                
+                <div class="story-meta">
+                  <el-space wrap>
+                    <el-tag type="danger" size="small" effect="plain">
+                      <el-icon><Star /></el-icon> {{ story.score }} 分
+                    </el-tag>
+                    <el-tag type="info" size="small" effect="plain">
+                      <el-icon><User /></el-icon> {{ story.by }}
+                    </el-tag>
+                    <el-tag type="success" size="small" effect="plain">
+                      <el-icon><ChatDotRound /></el-icon> {{ story.descendants }} 评论
+                    </el-tag>
+                    <el-tag type="warning" size="small" effect="plain">
+                      <el-icon><Timer /></el-icon> {{ formatTime(story.time) }}
+                    </el-tag>
+                  </el-space>
+                </div>
+              </div>
+            </div>
+          </el-card>
         </div>
-      </article>
-    </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -41,22 +60,22 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { Star, User, ChatDotRound, Timer } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'HackerNewsView',
   setup() {
     const stories = ref([])
     const loading = ref(true)
-    const error = ref(null)
 
     const fetchStories = async () => {
       try {
         loading.value = true
-        error.value = null
         const response = await axios.get('/api/hn/stories?limit=30')
         stories.value = response.data
       } catch (err) {
-        error.value = '加载失败: ' + err.message
+        ElMessage.error('加载失败: ' + err.message)
       } finally {
         loading.value = false
       }
@@ -80,8 +99,11 @@ export default {
     return {
       stories,
       loading,
-      error,
-      formatTime
+      formatTime,
+      Star,
+      User,
+      ChatDotRound,
+      Timer
     }
   }
 }
@@ -89,104 +111,65 @@ export default {
 
 <style scoped>
 .hn-view {
-  padding: 1rem 0;
+  padding: 20px;
 }
 
-.page-title {
-  margin-bottom: 1.5rem;
-  color: #ff6600;
-  font-size: 1.5rem;
+.content-row {
+  margin-top: 20px;
 }
 
-.loading, .error {
-  text-align: center;
-  padding: 3rem;
+.items-container {
+  min-height: 400px;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #ff6600;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+.story-card {
+  margin-bottom: 10px;
+  transition: all 0.3s;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error {
-  color: #d32f2f;
-  background: #ffebee;
-  border-radius: 8px;
-}
-
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.news-item {
-  display: flex;
-  background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.news-item:hover {
+.story-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.rank {
-  width: 40px;
-  height: 40px;
+.story-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ff6600;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.rank-avatar {
+  background-color: #909399;
   color: white;
   font-weight: bold;
-  border-radius: 50%;
-  margin-right: 1rem;
   flex-shrink: 0;
 }
 
-.content {
+.rank-avatar.top-rank {
+  background-color: #ff6600;
+}
+
+.story-info {
   flex: 1;
 }
 
-.item-title {
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
+.story-title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
-.item-title a {
-  color: #333;
+.story-title a {
+  color: #303133;
   text-decoration: none;
+  transition: color 0.3s;
 }
 
-.item-title a:hover {
+.story-title a:hover {
   color: #ff6600;
 }
 
-.item-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.score {
-  color: #ff6600;
-  font-weight: 600;
+.story-meta {
+  margin-top: 8px;
 }
 </style>
