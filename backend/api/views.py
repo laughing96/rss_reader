@@ -124,7 +124,7 @@ class RSSFeedsView(APIView):
 class RSSFeedDetailView(APIView):
     def delete(self, request, feed):
         feed = get_object_or_404(RSSFeed, id=feed)
-        RSSItem.objects.filter(feed=feed).delete()
+        RSSItem.objects.filter(feed=str(feed.id)).delete()
         feed.delete()
         return Response({"message": "Feed deleted successfully"})
 
@@ -145,7 +145,7 @@ class RSSItemsView(APIView):
         if feed:
             feed = get_object_or_404(RSSFeed, id=feed)
             fetch_rss_feed(feed.id)
-            items = RSSItem.objects.filter(feed=feed).order_by("-published_at")
+            items = RSSItem.objects.filter(feed=str(feed.id)).order_by("-published_at")
         else:
             fetch_all_rss_items()
             items = RSSItem.objects.order_by("-published_at")[:100]
