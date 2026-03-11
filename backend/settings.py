@@ -69,17 +69,34 @@ def get_database_config():
     }
 
 
-DATABASES = {"default": get_database_config()}
-
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+if os.environ.get("RUNNING_TESTS"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DOCKERDB", "postgres"),
+            "USER": os.getenv("POSTGRES_DOCKERUSER", "postgres"),
+            "PASSWORD": os.getenv("POSTGRES_DOCKERPASSWORD", "mysecretpassword"),
+            "HOST": os.getenv("POSTGRES_DOCKERHOST", "localhost"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        }
     }
-}
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
+else:
+    DATABASES = {"default": get_database_config()}
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
