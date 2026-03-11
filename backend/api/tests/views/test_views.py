@@ -1,12 +1,21 @@
+from api.models import Story, Folder, RSSFeed, RSSItem
 from unittest.mock import patch, MagicMock
 from django.test import TestCase, Client
 from django.utils import timezone
 
-from api.models import Story, Folder, RSSFeed, RSSItem
+import os
+print(f"DEBUG: RUNNING_TESTS = {os.environ.get('RUNNING_TESTS')}")
+
+
+class EnvTest(TestCase):
+    def test_env_is_set(self):
+        print(f"DEBUG: RUNNING_TESTS = {os.environ.get('RUNNING_TESTS')}")
+        assert os.environ.get("RUNNING_TESTS") == "1"
 
 
 class RootViewTest(TestCase):
     def setUp(self):
+        print(f"DEBUG: RUNNING_TESTS = {os.environ.get('RUNNING_TESTS')}")
         self.client = Client()
 
     def test_root_endpoint(self):
