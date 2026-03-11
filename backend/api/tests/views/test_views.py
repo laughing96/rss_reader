@@ -157,7 +157,7 @@ class RSSFeedsViewTest(TestCase):
         response = self.client.get('/api/rss/feeds')
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(len(data), 5)  # 4 default + 1 created
+        self.assertEqual(len(data), 5)
 
     @patch('api.views.fetch_rss_feed')
     def test_create_feed(self, mock_fetch):
@@ -168,7 +168,7 @@ class RSSFeedsViewTest(TestCase):
             'feed_url': 'https://example.com/feed.xml'
         })
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(RSSFeed.objects.count(), 5)  # 4 default + 1
+        self.assertEqual(RSSFeed.objects.count(), 5)
 
     def test_create_duplicate_feed_fails(self):
         RSSFeed.objects.create(

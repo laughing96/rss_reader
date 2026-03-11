@@ -156,10 +156,11 @@ class FetchAllRSSItemsTest(TestCase):
             title="Test Item",
             link="https://example.com/item"
         )
+
         mock_fetch.return_value = [item]
 
         items = fetch_all_rss_items()
-        self.assertEqual(len(items), 5)  # 4 default feeds + 1 test item
+        self.assertEqual(len(items), 5)
         mock_cache.set.assert_called_once()
 
 
@@ -188,7 +189,7 @@ class ParseOPMLFileTest(TestCase):
 </opml>"""
 
         feeds, errors = parse_opml_file(opml_content)
-        self.assertIn(len(feeds), [1, 2])  # Parser may return parent + child or just child
+        self.assertIn(len(feeds), [1, 2])
         self.assertTrue(any(f['feed_url'] == "https://example.com/nested.xml" for f in feeds))
 
     def test_parse_invalid_xml(self):
