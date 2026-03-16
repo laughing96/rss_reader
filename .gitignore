@@ -14,6 +14,7 @@ frontend/dist-ssr/
 # 环境文件
 **/.env
 **/.env.local
+**/.venv
 
 # IDE
 .idea/
@@ -45,3 +46,4 @@ orbstack-pv/
 rss.yaml
 todo.md 
 sub.opml
+
