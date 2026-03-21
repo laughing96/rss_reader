@@ -72,8 +72,7 @@ def get_database_config():
 
 # settings.py
 # 如果运行命令里有 'pytest' 字符串，自动判定为测试环境
-# RUNNING_TESTS = os.environ.get('RUNNING_TESTS') == '1' or 'pytest' in sys.argv[0]
-RUNNING_TESTS = os.environ.get('RUNNING_TESTS')
+RUNNING_TESTS = os.environ.get("RUNNING_TESTS")
 if RUNNING_TESTS:
     DATABASES = {
         "default": {
